@@ -16,13 +16,70 @@ struct ServiceConfig {
     response_file: String,
 }
 
-#[tokio::main]
-async fn main() {
+#[tokio::test]
+async fn test_valid_service_response() {
+    // Setup
     let config = load_config("config.yaml");
     let service_map = load_service_map(&config);
     let routes = build_routes(config, service_map);
 
-    warp::serve(routes).run(([0, 0, 0, 0], 3030)).await;
+    // Test for /v2/models/example/infer
+    let response = warp::test::request()
+        .method("GET")
+        .path("/v2/models/example/infer")
+        .reply(&routes)
+        .await;
+
+    assert_eq!(response.status(), 200);
+
+    let body: serde_json::Value =
+        serde_json::from_slice(response.body()).expect("Invalid JSON response");
+    assert_eq!(body["status"], "ok");
+    assert_eq!(body["prediction"], serde_json::json!([0.1, 0.9]));
+}
+
+#[tokio::test]
+async fn test_valid_service_response_with_delay() {
+    let config = load_config("config.yaml");
+    let service_map = load_service_map(&config);
+    let routes = build_routes(config, service_map);
+
+    // Start time
+    let start = tokio::time::Instant::now();
+
+    // Test for /v2/models/other-example/infer
+    let response = warp::test::request()
+        .method("GET")
+        .path("/v2/models/other-example/infer")
+        .reply(&routes)
+        .await;
+
+    // Check if response is delayed properly
+    let elapsed = start.elapsed();
+    assert!(elapsed.as_millis() >= 800);
+
+    assert_eq!(response.status(), 200);
+
+    let body: serde_json::Value =
+        serde_json::from_slice(response.body()).expect("Invalid JSON response");
+    assert_eq!(body["status"], "ok");
+    assert_eq!(body["prediction"], serde_json::json!([0.1, 0.9]));
+}
+
+#[tokio::test]
+async fn test_404_for_unknown_path() {
+    let config = load_config("config.yaml");
+    let service_map = load_service_map(&config);
+    let routes = build_routes(config, service_map);
+
+    // Test for an undefined path
+    let response = warp::test::request()
+        .method("GET")
+        .path("/v2/models/unknown/infer")
+        .reply(&routes)
+        .await;
+
+    assert_eq!(response.status(), 404);
 }
 
 fn load_config(path: &str) -> Arc<Config> {
@@ -75,90 +132,22 @@ async fn handle_request(
     config: Arc<Config>,
     service_map: Arc<HashMap<String, Arc<String>>>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    // Get the full request path
     let request_path = path.as_str().to_string();
 
+    // Find the service configuration based on the path
     if let Some(service) = config.services.values().find(|s| s.path == request_path) {
+        // Apply the service-specific delay
         let delay = service.delay;
         sleep(Duration::from_millis(delay)).await;
 
+        // Return the JSON response from the service map
         if let Some(response) = service_map.get(&service.path) {
             let json_response = serde_json::from_str::<serde_json::Value>(response).unwrap();
             return Ok(warp::reply::json(&json_response));
         }
     }
 
+    // If no service is found, return a 404 error
     Err(warp::reject::not_found())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_load_config() {
-        let config = load_config("config.yaml");
-        assert_eq!(config.services.len(), 3);
-
-        let example_service = config.services.get("example").unwrap();
-        assert_eq!(example_service.path, "/v2/models/example/infer");
-        assert_eq!(example_service.delay, 1200);
-        assert_eq!(example_service.response_file, "response.json");
-    }
-
-    #[test]
-    fn test_load_service_map() {
-        let config = load_config("config.yaml");
-        let service_map = load_service_map(&config);
-
-        assert!(service_map.contains_key("/v2/models/example/infer"));
-        assert!(service_map.contains_key("/v2/models/other-example/infer"));
-
-        let example_response = service_map.get("/v2/models/example/infer").unwrap();
-        let response_body: serde_json::Value =
-            serde_json::from_str(example_response).expect("Invalid JSON response");
-        assert_eq!(response_body["status"], "ok");
-        assert_eq!(response_body["prediction"], serde_json::json!([0.1, 0.9]));
-    }
-
-    #[tokio::test]
-    async fn test_handle_request_valid_path() {
-        let config = load_config("config.yaml");
-        let service_map = load_service_map(&config);
-
-        let request_path = warp::test::request()
-            .path("/v2/models/example/infer")
-            .reply(&build_routes(config.clone(), service_map.clone()))
-            .await;
-
-        assert_eq!(request_path.status(), 200);
-    }
-
-    #[tokio::test]
-    async fn test_handle_request_invalid_path() {
-        let config = load_config("config.yaml");
-        let service_map = load_service_map(&config);
-
-        let response = warp::test::request()
-            .path("/v2/models/unknown/infer")
-            .reply(&build_routes(config.clone(), service_map.clone()))
-            .await;
-
-        assert_eq!(response.status(), 404);
-    }
-
-    #[tokio::test]
-    async fn test_delay() {
-        let config = load_config("config.yaml");
-        let service_map = load_service_map(&config);
-
-        let start_time = tokio::time::Instant::now();
-
-        warp::test::request()
-            .path("/v2/models/example/infer")
-            .reply(&build_routes(config.clone(), service_map.clone()))
-            .await;
-
-        let elapsed = start_time.elapsed().as_millis();
-        assert!(elapsed >= 1200);
-    }
 }

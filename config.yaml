@@ -1,0 +1,13 @@
+services:
+  example:
+    path: "/v2/models/example/infer"
+    delay: 1200
+    response_file: "response.json"
+  other-example:
+    path: "/v2/models/other-example/infer"
+    delay: 800
+    response_file: "response.json"
+  health:
+    path: "/v2/health/ready"
+    delay: 1
+    response_file: "health.json"
