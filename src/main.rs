@@ -13,12 +13,12 @@ struct Config {
 struct ServiceConfig {
     path: String,
     delay: u64,
-    response_file: String,
+    response: String,
 }
 
 #[tokio::main]
 async fn main() {
-    let config = load_config("config.yaml");
+    let config = load_config("config/services.yaml");
     let service_map = load_service_map(&config);
     let routes = build_routes(config, service_map);
 
@@ -38,8 +38,8 @@ fn load_service_map(config: &Arc<Config>) -> Arc<HashMap<String, Arc<String>>> {
         .services
         .iter()
         .map(|(_, service)| {
-            let response_content = fs::read_to_string(&service.response_file)
-                .expect(&format!("Unable to load response file: {}", service.response_file));
+            let response_content = fs::read_to_string(&service.response)
+                .expect(&format!("Unable to load response file: {}", service.response));
             (service.path.clone(), Arc::new(response_content))
         })
         .collect();
@@ -96,18 +96,18 @@ mod tests {
 
     #[test]
     fn test_load_config() {
-        let config = load_config("config.yaml");
+        let config = load_config("config/services.yaml");
         assert_eq!(config.services.len(), 3);
 
         let example_service = config.services.get("example").unwrap();
         assert_eq!(example_service.path, "/v2/models/example/infer");
         assert_eq!(example_service.delay, 1200);
-        assert_eq!(example_service.response_file, "response.json");
+        assert_eq!(example_service.response, "config/response.json");
     }
 
     #[test]
     fn test_load_service_map() {
-        let config = load_config("config.yaml");
+        let config = load_config("config/services.yaml");
         let service_map = load_service_map(&config);
 
         assert!(service_map.contains_key("/v2/models/example/infer"));
@@ -122,7 +122,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_valid_path() {
-        let config = load_config("config.yaml");
+        let config = load_config("config/services.yaml");
         let service_map = load_service_map(&config);
 
         let request_path = warp::test::request()
@@ -135,7 +135,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_handle_request_invalid_path() {
-        let config = load_config("config.yaml");
+        let config = load_config("config/services.yaml");
         let service_map = load_service_map(&config);
 
         let response = warp::test::request()
@@ -148,7 +148,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_delay() {
-        let config = load_config("config.yaml");
+        let config = load_config("config/services.yaml");
         let service_map = load_service_map(&config);
 
         let start_time = tokio::time::Instant::now();

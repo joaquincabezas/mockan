@@ -13,13 +13,13 @@ struct Config {
 struct ServiceConfig {
     path: String,
     delay: u64,
-    response_file: String,
+    response: String,
 }
 
 #[tokio::test]
 async fn test_valid_service_response() {
     // Setup
-    let config = load_config("config.yaml");
+    let config = load_config("config/services.yaml");
     let service_map = load_service_map(&config);
     let routes = build_routes(config, service_map);
 
@@ -40,7 +40,7 @@ async fn test_valid_service_response() {
 
 #[tokio::test]
 async fn test_valid_service_response_with_delay() {
-    let config = load_config("config.yaml");
+    let config = load_config("config/services.yaml");
     let service_map = load_service_map(&config);
     let routes = build_routes(config, service_map);
 
@@ -68,7 +68,7 @@ async fn test_valid_service_response_with_delay() {
 
 #[tokio::test]
 async fn test_404_for_unknown_path() {
-    let config = load_config("config.yaml");
+    let config = load_config("config/services.yaml");
     let service_map = load_service_map(&config);
     let routes = build_routes(config, service_map);
 
@@ -95,8 +95,8 @@ fn load_service_map(config: &Arc<Config>) -> Arc<HashMap<String, Arc<String>>> {
         .services
         .iter()
         .map(|(_, service)| {
-            let response_content = fs::read_to_string(&service.response_file)
-                .expect(&format!("Unable to load response file: {}", service.response_file));
+            let response_content = fs::read_to_string(&service.response)
+                .expect(&format!("Unable to load response file: {}", service.response));
             (service.path.clone(), Arc::new(response_content))
         })
         .collect();
