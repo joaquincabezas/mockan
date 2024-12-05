@@ -12,7 +12,7 @@ Mock an API server
 
 mockan is a mock API server that helps teams work with Machine Learning/AI workflows. Teams can do experimentation without incurring into high costs and without waiting for the models to be ready, or simulate incidents.
 
-It simulates a working API (input, ouput, queues, delay and saturation/errors) of multiple cloud AI services (OpenAI, Anthropic, AWS Bedrock) and self-served (NVIDIA Triton Inference Server, Torchserve, TensorFlow Serving). There are many included mock models and you can create new ones easily.
+It simulates a working API (input, ouput, queues, delay and saturation/errors) of multiple cloud AI services ([OpenAI](https://platform.openai.com/docs/overview), [Anthropic](https://docs.anthropic.com/en/api/getting-started), [AWS Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/welcome.html)) and self-served ([NVIDIA Triton Inference Server](https://developer.nvidia.com/triton-inference-server), [Torchserve](https://github.com/pytorch/serve), [TensorFlow Serving](https://github.com/tensorflow/serving)). There are many included mock models and you can create new ones easily.
 
 # Why should I use this?
 
