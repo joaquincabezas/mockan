@@ -1,8 +1,8 @@
-use warp::Filter;
 use serde::Deserialize;
-use std::{fs, sync::Arc};
 use std::collections::HashMap;
+use std::{fs, sync::Arc};
 use tokio::time::{sleep, Duration};
+use warp::Filter;
 
 #[derive(Debug, Deserialize)]
 struct Config {
@@ -26,10 +26,9 @@ async fn main() {
 }
 
 fn load_config(path: &str) -> Arc<Config> {
-    let config: Config = serde_yaml::from_str(
-        &fs::read_to_string(path).expect(&format!("Unable to load {}", path)),
-    )
-    .expect("Failed to parse config.yaml");
+    let config: Config =
+        serde_yaml::from_str(&fs::read_to_string(path).expect(&format!("Unable to load {}", path)))
+            .expect("Failed to parse config.yaml");
     Arc::new(config)
 }
 
@@ -38,8 +37,10 @@ fn load_service_map(config: &Arc<Config>) -> Arc<HashMap<String, Arc<String>>> {
         .services
         .iter()
         .map(|(_, service)| {
-            let response_content = fs::read_to_string(&service.response)
-                .expect(&format!("Unable to load response file: {}", service.response));
+            let response_content = fs::read_to_string(&service.response).expect(&format!(
+                "Unable to load response file: {}",
+                service.response
+            ));
             (service.path.clone(), Arc::new(response_content))
         })
         .collect();
@@ -66,7 +67,8 @@ fn with_config(
 
 fn with_service_map(
     service_map: Arc<HashMap<String, Arc<String>>>,
-) -> impl Filter<Extract = (Arc<HashMap<String, Arc<String>>>,), Error = std::convert::Infallible> + Clone {
+) -> impl Filter<Extract = (Arc<HashMap<String, Arc<String>>>,), Error = std::convert::Infallible> + Clone
+{
     warp::any().map(move || service_map.clone())
 }
 
