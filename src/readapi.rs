@@ -40,7 +40,7 @@ pub fn get_paths(api_spec: &oas3::Spec) -> Result<Vec<ServiceConfig>, u64> {
 }
 
 
-pub fn get_default_port(api_spec: &oas3::Spec) -> i32 {
+pub fn get_default_port(api_spec: &oas3::Spec) -> u16 {
     if api_spec.servers.len() > 1 {
         println!("Currently mockan only supports one server in the OpenAPI specification");
         return 0;
@@ -50,7 +50,7 @@ pub fn get_default_port(api_spec: &oas3::Spec) -> i32 {
 
         match &port_obj {
             Some(port) => {
-                let default_port: i32 = port.default.parse().expect("Default port must be a number");
+                let default_port: u16 = port.default.parse().expect("Default port must be a number");
                 return default_port;
             }
             None => {
