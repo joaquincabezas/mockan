@@ -8,34 +8,42 @@ async fn main() {
 
     match api_spec {
         Ok(spec) => {
+            let default_port = readapi::get_default_port(&spec);
+            let api_services = readapi::get_paths(&spec);
 
-        let default_port = readapi::get_default_port(&spec);
-        let api_services = readapi::get_paths(&spec);
-
-        match api_services {
-            Ok(services) => {
-                for service in services 
-                    {
-                        println!("Api path: {}", service.path);
-                        println!("Delay: {}", service.delay);
+            match api_services {
+                Ok(services) => {
+                    if services.is_empty() {
+                        eprintln!("No services found in the API specification.");
+                        return;
                     }
 
-                    let routes = warp::any().map(|| "Hello, World!");
+                    let hello = warp::path("hello").map(|| "Hello, World!").boxed();
 
-                    warp::serve(routes).run(([127, 0, 0, 1], default_port)).await;
-            }
-            Err(code) => {
-                // Handle the Err case (i.e., the error)
-                println!("Error code: {}", code);
-            }
-        
-        }
+                    let mut routes = hello;
 
+                    for service in services {
+                        let path = service.path.clone();
+                        let route = warp::path(path).map(|| "Hello, World!").boxed();
+                        routes = routes.or(route).unify().boxed();
+                    }
+
+                    // Serve the combined routes
+                    warp::serve(routes)
+                        .run(([127, 0, 0, 1], default_port))
+                        .await;
+                }
+                Err(code) => {
+                    // Handle the error case when retrieving API services
+                    eprintln!("Error retrieving API services: {}", code);
+                }
+            }
         }
-        Err(..) => {}
+        Err(err) => {
+            // Handle the error case when loading the API specification
+            eprintln!("Error loading API specification: {:?}", err);
+        }
     }
 
-    println!("Nothing!")
-
+    println!("Server has stopped.");
 }
-

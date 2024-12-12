@@ -1,6 +1,6 @@
 use oas3::{from_path};
 
-
+#[derive(Clone)]
 pub struct ServiceConfig {
     pub path: String,
     pub delay: u64,
@@ -26,7 +26,7 @@ pub fn get_paths(api_spec: &oas3::Spec) -> Result<Vec<ServiceConfig>, u64> {
                 None => 0,                                 // Default to 0 if None
             };
 
-            let new_service = ServiceConfig { path:path.to_string(), delay: delay_value };
+            let new_service = ServiceConfig { path:path.trim_start_matches('/').to_string(), delay: delay_value };
 
             api_paths.push(new_service);
         }
